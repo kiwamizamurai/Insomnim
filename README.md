@@ -114,21 +114,6 @@ nimble app         # dist/Insomnim.app (bundled icon, ad-hoc codesigned)
 > will reject it. Distributing it to other machines would require enrolling in
 > the Apple Developer Program and notarizing the build separately.
 
-## Architecture
-
-```
-SessionController ──▶ InhibitorFactory ◀── macOS Adapter (macos_power.nim)
-       │                                          │
-       ▼                                          ▼
-  SleepLease                          IOKit / CoreFoundation FFI (macos_backend.nim)
-```
-
-- `session.nim` — the state machine (inactive / indefinite / timed) with a `MonoTime`-based deadline
-- `gui_controller.nim` — AppKit-free and locale-free: `GuiCommand` → drives `SessionController` → produces a `GuiViewModel` with structured, translatable fields
-- `i18n.nim` — a type-safe `StringKey` enum plus a compile-time translation table; no external dependency
-- `platform/appkit_shell.nim` — the menu bar UI; builds an Objective-C target class at runtime and is the only place that calls `i18n.t()`
-- `platform/macos_backend.nim` — the only place that touches IOKit/CoreFoundation; rolls back partially-acquired assertions on failure
-
 ## Limitations
 
 > [!NOTE]
@@ -140,14 +125,3 @@ SessionController ──▶ InhibitorFactory ◀── macOS Adapter (macos_powe
 - GUI settings (including the selected language) are not persisted across restarts
 - No protection against running multiple instances; CLI and GUI don't share state
 - Built for the local machine's architecture (arm64), not a universal binary
-
-## Security & privacy
-
-- No network access, telemetry, or update checks at runtime
-- No admin privileges required; never modifies system-wide power settings (e.g. via `pmset`)
-- Power Management assertions are acquired and released per-process
-- No Keychain use; no user settings or logs are persisted to disk
-
-## License
-
-MIT

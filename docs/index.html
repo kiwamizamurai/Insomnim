@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Insomnim — keep your Mac awake, directly through IOKit</title>
+  <meta name="description" content="Insomnim is a CLI and menu bar app that keeps macOS from sleeping by calling IOKit Power Management directly — no caffeinate subprocess, no network access, nothing written to disk." />
+  <link rel="icon" href="assets/icon.png" />
+  <link rel="apple-touch-icon" href="assets/icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <script>document.documentElement.classList.add('intro-run');</script>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="moonGradient" x1="0.1" y1="0" x2="0.9" y2="1">
+        <stop offset="0%" stop-color="#fbe6a3" />
+        <stop offset="100%" stop-color="#e3b23c" />
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div id="stars" aria-hidden="true"></div>
+  <div class="intro-veil" aria-hidden="true"></div>
+
+  <nav class="site-nav">
+    <div class="wrap">
+      <a class="brand" href="#top">
+        <img src="assets/icon.png" alt="" width="26" height="26" />
+        Insomnim
+      </a>
+      <div class="nav-links">
+        <a href="#what">Overview</a>
+        <a href="#features">Features</a>
+        <a href="#install">Install</a>
+        <a href="#architecture">Architecture</a>
+      </div>
+      <a class="nav-gh" href="https://github.com/kiwamizamurai/Insomnim" target="_blank" rel="noopener">
+        GitHub ↗
+      </a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero" id="top">
+      <div class="wrap">
+        <button class="moon-toggle" id="moonToggle" data-state="stopped" aria-pressed="false"
+                aria-label="Toggle sleep prevention — try the same icon your menu bar shows">
+          <span class="moon-toggle-glow"></span>
+
+          <span class="moon-toggle-badge">
+            <svg class="state-stopped" viewBox="0 0 18 18" aria-hidden="true">
+              <path class="moon-shape" d="
+                M 9 2
+                A 7 7 0 1 1 9 16
+                A 9 9 0 1 0 9 2
+                Z" />
+            </svg>
+            <svg class="state-active" viewBox="0 0 18 18" aria-hidden="true">
+              <path class="moon-shape" fill-rule="evenodd" d="
+                M 2 9
+                A 7 7 0 1 0 16 9
+                A 7 7 0 1 0 2 9
+                Z
+                M 7.1 9
+                A 2.1 1.35 0 1 0 11.3 9
+                A 2.1 1.35 0 1 0 7.1 9
+                Z" />
+              <circle cx="9.9" cy="9" r="0.75" fill="#171b3d" />
+            </svg>
+          </span>
+
+          <span class="shock-ring"></span>
+
+          <span class="fx-layer" aria-hidden="true">
+            <span class="kira"><svg viewBox="0 0 32 32"><path d="M16 1 C17 12 20 15 31 16 C20 17 17 20 16 31 C15 20 12 17 1 16 C12 15 15 12 16 1 Z"/></svg></span>
+            <span class="kira"><svg viewBox="0 0 32 32"><path d="M16 1 C17 12 20 15 31 16 C20 17 17 20 16 31 C15 20 12 17 1 16 C12 15 15 12 16 1 Z"/></svg></span>
+            <span class="kira"><svg viewBox="0 0 32 32"><path d="M16 1 C17 12 20 15 31 16 C20 17 17 20 16 31 C15 20 12 17 1 16 C12 15 15 12 16 1 Z"/></svg></span>
+            <span class="kira"><svg viewBox="0 0 32 32"><path d="M16 1 C17 12 20 15 31 16 C20 17 17 20 16 31 C15 20 12 17 1 16 C12 15 15 12 16 1 Z"/></svg></span>
+            <span class="kira"><svg viewBox="0 0 32 32"><path d="M16 1 C17 12 20 15 31 16 C20 17 17 20 16 31 C15 20 12 17 1 16 C12 15 15 12 16 1 Z"/></svg></span>
+            <span class="kira"><svg viewBox="0 0 32 32"><path d="M16 1 C17 12 20 15 31 16 C20 17 17 20 16 31 C15 20 12 17 1 16 C12 15 15 12 16 1 Z"/></svg></span>
+          </span>
+
+          <span class="zzz-layer" aria-hidden="true">
+            <span class="zzz zzz--1">z</span>
+            <span class="zzz zzz--2">Z</span>
+            <span class="zzz zzz--3">z</span>
+          </span>
+        </button>
+
+        <h1 class="hero-line" style="--d:1.7s">Insomnim</h1>
+        <p class="tagline hero-line" style="--d:1.82s">Insomnia + Nim</p>
+        <p class="lead hero-line" style="--d:1.94s">
+          A CLI and menu bar app that keeps macOS awake by talking to IOKit Power
+          Management directly — instead of shelling out to <code>caffeinate</code>.
+        </p>
+
+        <div class="status-pill hero-line" id="statusPill" style="--d:2.06s">
+          <span class="status-dot"></span>
+          <span id="statusText">Sleep allowed — Insomnim is resting</span>
+        </div>
+
+        <div class="badges hero-line" style="--d:2.18s">
+          <img src="https://img.shields.io/badge/platform-macOS-black?logo=apple&amp;logoColor=white" alt="Platform macOS" />
+          <img src="https://img.shields.io/badge/Nim-%3E%3D2.2.0-ffe953?logo=nim&amp;logoColor=black" alt="Nim >=2.2.0" />
+          <img src="https://img.shields.io/badge/i18n-en%20%7C%20ja%20%7C%20zh-2ea44f" alt="i18n: en, ja, zh" />
+          <img src="https://img.shields.io/badge/license-MIT-4b6bff" alt="MIT license" />
+          <img src="https://img.shields.io/github/stars/kiwamizamurai/Insomnim?color=e3b23c&amp;label=stars&amp;logo=github" alt="GitHub stars" />
+        </div>
+
+        <div class="cta-row hero-line" style="--d:2.3s">
+          <a class="btn btn-primary" href="https://github.com/kiwamizamurai/Insomnim" target="_blank" rel="noopener">
+            View on GitHub
+          </a>
+          <a class="btn btn-ghost" href="#install">Get started →</a>
+        </div>
+
+        <p class="hint hero-line" style="--d:2.42s">Click the moon — it's the exact icon your menu bar shows while Insomnim runs.</p>
+      </div>
+    </section>
+
+    <section id="what">
+      <div class="wrap">
+        <p class="eyebrow reveal">Why Insomnim</p>
+        <h2 class="reveal">It talks to macOS directly — not through <code>caffeinate</code></h2>
+        <p class="section-intro reveal">
+          Insomnim keeps macOS from idling to sleep — and, optionally, from dimming
+          the display — for as long as it's running. Rather than spawning
+          <code>caffeinate</code> as a subprocess, it calls
+          <code>IOPMAssertionCreateWithName</code> / <code>IOPMAssertionRelease</code>
+          directly. Both interfaces, CLI and menu bar, share one core:
+          <code>SessionController</code>.
+        </p>
+
+        <div class="pillars">
+          <div class="pillar reveal">
+            <span class="pillar-icon">🛰️</span>
+            <h3>No subprocess</h3>
+            <p>Talks to IOKit Power Management directly through FFI — nothing shells out.</p>
+          </div>
+          <div class="pillar reveal">
+            <span class="pillar-icon">💾</span>
+            <h3>Nothing on disk</h3>
+            <p>No settings, cache, or logs are ever written. Nothing to clean up.</p>
+          </div>
+          <div class="pillar reveal">
+            <span class="pillar-icon">📡</span>
+            <h3>Zero network</h3>
+            <p>No telemetry, no update checks, no network access at runtime — ever.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="compare">
+      <div class="wrap">
+        <p class="eyebrow reveal">One core, two interfaces</p>
+        <h2 class="reveal">CLI or menu bar — pick whichever fits the moment</h2>
+        <p class="section-intro reveal">
+          Both interfaces are driven by the same <code>SessionController</code>
+          state machine, so behavior never drifts between them.
+        </p>
+
+        <div class="compare-card reveal">
+          <table class="compare">
+            <thead>
+              <tr><th></th><th>CLI</th><th>GUI</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Launch</td>
+                <td>Terminal</td>
+                <td>Menu bar, runs in the background</td>
+              </tr>
+              <tr>
+                <td>Duration</td>
+                <td>Forever / a fixed timeout / while a child process runs</td>
+                <td>Forever / 30 min / 1 hour</td>
+              </tr>
+              <tr>
+                <td>Display sleep</td>
+                <td><code>--display</code></td>
+                <td>Toggle checkbox</td>
+              </tr>
+              <tr>
+                <td>Status</td>
+                <td>Printed to stdout</td>
+                <td>Menu bar icon + remaining time</td>
+              </tr>
+              <tr>
+                <td>Language</td>
+                <td><code>--lang en|ja|zh</code>, or auto-detected</td>
+                <td>Switch live from the menu bar</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <p class="eyebrow reveal">Under the hood</p>
+        <h2 class="reveal">Built with intent, not shortcuts</h2>
+        <p class="section-intro reveal">
+          Six decisions that shape how Insomnim behaves — and how it fails safely
+          when something goes wrong.
+        </p>
+
+        <div class="feature-grid">
+          <div class="feature-card reveal">
+            <span class="num">01</span>
+            <h3>Talks to IOKit directly</h3>
+            <p>No <code>caffeinate</code> subprocess. The CLI alone doesn't even depend on the <code>darwin</code> package.</p>
+          </div>
+          <div class="feature-card reveal">
+            <span class="num">02</span>
+            <h3>Ports and Adapters</h3>
+            <p><code>SessionController</code> only knows the <code>InhibitorFactory</code> / <code>SleepLease</code> ports — every macOS detail lives under <code>platform/</code>.</p>
+          </div>
+          <div class="feature-card reveal">
+            <span class="num">03</span>
+            <h3>Safe cleanup</h3>
+            <p><code>SleepLease.close()</code> is idempotent; <code>defer</code>/<code>finally</code> release the assertion on every exit path, exceptions included.</p>
+          </div>
+          <div class="feature-card reveal">
+            <span class="num">04</span>
+            <h3>Acquire-before-release</h3>
+            <p>Reconfiguring while running acquires the new assertion first, so a failure leaves the old state untouched.</p>
+          </div>
+          <div class="feature-card reveal">
+            <span class="num">05</span>
+            <h3>Multi-language UI</h3>
+            <p>A dependency-free <code>i18n</code> module. Switching language in the GUI re-renders everything instantly, no restart.</p>
+          </div>
+          <div class="feature-card reveal">
+            <span class="num">06</span>
+            <h3>Deterministic tests</h3>
+            <p>17 unit tests driven by a fake inhibitor — no dependency on real IOKit or wall-clock time.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="wrap">
+        <p class="eyebrow reveal">Get started</p>
+        <h2 class="reveal">From zero to awake in three commands</h2>
+        <p class="section-intro reveal">
+          Requires macOS on Apple Silicon, <a href="https://brew.sh" target="_blank" rel="noopener">Homebrew</a>,
+          and the Xcode Command Line Tools.
+        </p>
+
+        <div class="install-grid">
+          <div>
+            <div class="code-block reveal">
+              <div class="code-block-head">
+                <span>install</span>
+                <button class="copy-btn" data-copy-target="code-install">Copy</button>
+              </div>
+              <pre class="code" id="code-install"><span class="cmt"># Homebrew, then the repo</span>
+brew install nim
+git clone https://github.com/kiwamizamurai/Insomnim.git
+cd Insomnim
+nimble test<span class="cmt">   # 17 unit tests</span></pre>
+            </div>
+
+            <div class="code-block reveal">
+              <div class="code-block-head">
+                <span>usage</span>
+                <button class="copy-btn" data-copy-target="code-usage">Copy</button>
+              </div>
+              <pre class="code" id="code-usage"><span class="cmt"># Inhibit indefinitely, until Ctrl+C</span>
+insomnim
+
+<span class="cmt"># 30 minutes, also preventing the display from sleeping</span>
+insomnim --timeout 1800 --display
+
+<span class="cmt"># Only while rsync is running</span>
+insomnim -- rsync -av ./src/ backup:/data/
+
+<span class="cmt"># Force Japanese output regardless of the system locale</span>
+insomnim --lang ja --help</pre>
+            </div>
+
+            <div class="code-block reveal">
+              <div class="code-block-head">
+                <span>build &amp; package</span>
+                <button class="copy-btn" data-copy-target="code-build">Copy</button>
+              </div>
+              <pre class="code" id="code-build">nimble release<span class="cmt">   # bin/insomnim        (CLI)</span>
+nimble gui<span class="cmt">       # bin/insomnim-gui   (GUI, fetches darwin)</span>
+nimble app<span class="cmt">       # dist/Insomnim.app  (bundled icon, ad-hoc signed)</span></pre>
+            </div>
+          </div>
+
+          <div class="reveal table-scroll">
+            <table class="opt-table">
+              <thead>
+                <tr><th>Option</th><th>Description</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>--timeout SEC</code></td><td>Stop automatically after SEC seconds</td></tr>
+                <tr><td><code>--display</code></td><td>Also prevent the display from idling to sleep</td></tr>
+                <tr><td><code>--system-sleep</code></td><td>Also request <code>PreventSystemSleep</code> (subject to OS limits)</td></tr>
+                <tr><td><code>--reason TEXT</code></td><td>Reason string reported to the OS</td></tr>
+                <tr><td><code>--lang LANG</code></td><td>UI language: <code>en</code>, <code>ja</code>, <code>zh</code></td></tr>
+                <tr><td><code>-- COMMAND ARGS...</code></td><td>Inhibit only while COMMAND runs, return its exit code</td></tr>
+                <tr><td><code>-h</code>, <code>--help</code></td><td>Show help</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture">
+      <div class="wrap">
+        <p class="eyebrow reveal">Architecture</p>
+        <h2 class="reveal">Ports and Adapters, kept honest</h2>
+        <p class="section-intro reveal">
+          <code>SessionController</code> never touches macOS itself — it only knows
+          about ports. Every platform detail is isolated behind them.
+        </p>
+
+        <div class="arch-diagram reveal">
+          <div class="arch-row">
+            <div class="arch-box accent">SessionController</div>
+            <div class="arch-arrow arch-arrow--h">→</div>
+            <div class="arch-box">InhibitorFactory</div>
+            <div class="arch-arrow arch-arrow--h">←</div>
+            <div class="arch-box accent">macOS Adapter<br /><small>(macos_power.nim)</small></div>
+          </div>
+          <div class="arch-row arch-row--spacer">
+            <div class="arch-arrow">↓</div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div class="arch-arrow">↓</div>
+          </div>
+          <div class="arch-row">
+            <div class="arch-box">SleepLease</div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div class="arch-box">IOKit / CoreFoundation FFI<br /><small>(macos_backend.nim)</small></div>
+          </div>
+        </div>
+
+        <div class="arch-files reveal">
+          <div class="arch-file"><code>session.nim</code><span>The state machine (inactive / indefinite / timed) with a <code>MonoTime</code>-based deadline.</span></div>
+          <div class="arch-file"><code>gui_controller.nim</code><span>AppKit-free and locale-free: <code>GuiCommand</code> drives <code>SessionController</code>, producing a translatable <code>GuiViewModel</code>.</span></div>
+          <div class="arch-file"><code>i18n.nim</code><span>A type-safe <code>StringKey</code> enum plus a compile-time translation table — no external dependency.</span></div>
+          <div class="arch-file"><code>platform/appkit_shell.nim</code><span>The menu bar UI; builds an Objective-C target class at runtime, the only place that calls <code>i18n.t()</code>.</span></div>
+          <div class="arch-file"><code>platform/macos_backend.nim</code><span>The only place that touches IOKit/CoreFoundation; rolls back partially-acquired assertions on failure.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="trust">
+      <div class="wrap">
+        <p class="eyebrow reveal">Security &amp; limitations</p>
+        <h2 class="reveal">What it promises — and what it doesn't</h2>
+
+        <div class="two-col">
+          <div class="info-card security reveal">
+            <h3>🔒 Security &amp; privacy</h3>
+            <ul>
+              <li>No network access, telemetry, or update checks at runtime</li>
+              <li>No admin privileges required; never touches system-wide power settings (<code>pmset</code>)</li>
+              <li>Power Management assertions are acquired and released per-process</li>
+              <li>No Keychain use; no settings or logs are ever persisted to disk</li>
+            </ul>
+          </div>
+
+          <div class="info-card limits reveal">
+            <h3>Limitations</h3>
+            <ul>
+              <li>macOS only — no Windows or Linux support</li>
+              <li>Sleep on lid-close is not guaranteed to be prevented</li>
+              <li>GUI settings, including language, are not persisted across restarts</li>
+              <li>No protection against multiple instances; CLI and GUI don't share state</li>
+              <li>Built for the local machine's architecture (arm64), not universal</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <img src="assets/icon.png" alt="" width="22" height="22" />
+          <span>Insomnim — MIT licensed, © 2026 kiwamizamurai</span>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/kiwamizamurai/Insomnim" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/kiwamizamurai/Insomnim/releases" target="_blank" rel="noopener">Releases</a>
+          <a href="https://github.com/kiwamizamurai/Insomnim/blob/master/LICENSE" target="_blank" rel="noopener">License</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

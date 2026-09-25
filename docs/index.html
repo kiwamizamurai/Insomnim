@@ -35,7 +35,6 @@
         <a href="#what">Overview</a>
         <a href="#features">Features</a>
         <a href="#install">Install</a>
-        <a href="#architecture">Architecture</a>
       </div>
       <a class="nav-gh" href="https://github.com/kiwamizamurai/Insomnim" target="_blank" rel="noopener">
         GitHub ↗
@@ -312,49 +311,6 @@ nimble app<span class="cmt">       # dist/Insomnim.app  (bundled icon, ad-hoc si
               </tbody>
             </table>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="architecture">
-      <div class="wrap">
-        <p class="eyebrow reveal">Architecture</p>
-        <h2 class="reveal">Ports and Adapters, kept honest</h2>
-        <p class="section-intro reveal">
-          <code>SessionController</code> never touches macOS itself — it only knows
-          about ports. Every platform detail is isolated behind them.
-        </p>
-
-        <div class="arch-diagram reveal">
-          <div class="arch-row">
-            <div class="arch-box accent">SessionController</div>
-            <div class="arch-arrow arch-arrow--h">→</div>
-            <div class="arch-box">InhibitorFactory</div>
-            <div class="arch-arrow arch-arrow--h">←</div>
-            <div class="arch-box accent">macOS Adapter<br /><small>(macos_power.nim)</small></div>
-          </div>
-          <div class="arch-row arch-row--spacer">
-            <div class="arch-arrow">↓</div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div class="arch-arrow">↓</div>
-          </div>
-          <div class="arch-row">
-            <div class="arch-box">SleepLease</div>
-            <div></div>
-            <div></div>
-            <div></div>
-            <div class="arch-box">IOKit / CoreFoundation FFI<br /><small>(macos_backend.nim)</small></div>
-          </div>
-        </div>
-
-        <div class="arch-files reveal">
-          <div class="arch-file"><code>session.nim</code><span>The state machine (inactive / indefinite / timed) with a <code>MonoTime</code>-based deadline.</span></div>
-          <div class="arch-file"><code>gui_controller.nim</code><span>AppKit-free and locale-free: <code>GuiCommand</code> drives <code>SessionController</code>, producing a translatable <code>GuiViewModel</code>.</span></div>
-          <div class="arch-file"><code>i18n.nim</code><span>A type-safe <code>StringKey</code> enum plus a compile-time translation table — no external dependency.</span></div>
-          <div class="arch-file"><code>platform/appkit_shell.nim</code><span>The menu bar UI; builds an Objective-C target class at runtime, the only place that calls <code>i18n.t()</code>.</span></div>
-          <div class="arch-file"><code>platform/macos_backend.nim</code><span>The only place that touches IOKit/CoreFoundation; rolls back partially-acquired assertions on failure.</span></div>
         </div>
       </div>
     </section>
